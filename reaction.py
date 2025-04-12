@@ -1,42 +1,111 @@
-# Author: Renjie Zhou
+# Author: Yang Yue
 # Date: 2025-04-12
-# Loop game
+# Quick Reaction Game with Reaction Timer
 
 from gpiozero import LED, Button
-from time import sleep
+from time import sleep, time
 from random import uniform
 
-led = LED(4)
-# 确保左按钮接GPIO14，右按钮接GPIO15（关键修正点）
-left_button = Button(14)  
-right_button = Button(15)  
+# Hardware Configuration (Verify physical connections)
+LED_PIN = 4
+LEFT_BUTTON_PIN = 14  # GPIO14 for left button
+RIGHT_BUTTON_PIN = 15  # GPIO15 for right button
 
-left_name = input('Left player name: ')
-right_name = input('Right player name: ')
+# Initialize components
+led = LED(LED_PIN)
+left_button = Button(LEFT_BUTTON_PIN, pull_up=True, bounce_time=0.1)
+right_button = Button(RIGHT_BUTTON_PIN, pull_up=True, bounce_time=0.1)
 
-def pressed(button):
-    # 调试：打印触发的引脚编号
-    print(f"Button pressed on pin: {button.pin.number}")  
-    if button.pin.number == 14:  # 左按钮触发
-        print(f"{left_name} won the game!")
-    else:  # 右按钮触发（引脚15）
-        print(f"{right_name} won the game!")
-    # 移除事件监听，避免重复触发
-    left_button.when_pressed = None  
-    right_button.when_pressed = None  
+# Game settings
+player_left = input("Left player name: ")
+player_right = input("Right player name: ")
+total_rounds = int(input("Number of rounds: "))
 
-max_rounds = int(input("How many rounds do you want to play? "))
+# Game state
+scores = {player_left: 0, player_right: 0}
+reaction_times = []
 current_round = 0
+game_active = False
+start_time = 0
 
-while current_round < max_rounds:
-    current_round += 1
-    print(f"\nRound {current_round} begins!")
-    
-    # 重置事件监听
-    left_button.when_pressed = pressed  
-    right_button.when_pressed = pressed  
-    
-    led.on()
-    delay = uniform(5, 10)  # 随机亮灯时间（5-10秒）
-    sleep(delay)
+
+def button_pressed(btn):
+    global game_active, start_time
+    if not game_active:
+        return
+
+    game_active = False  # Lock game state
+
+    # Calculate reaction time
+    end_time = time()
+    reaction_time = end_time - start_time
+    reaction_time = round(reaction_time, 3)  # Precision to milliseconds
+
+    # Store reaction time
+    reaction_times.append(reaction_time)
+
+    # Determine winner
+    winner = player_left if btn.pin.number == LEFT_BUTTON_PIN else player_right
+    scores[winner] += 1
+
+    # Print results
+    print(f"\n[RESULT] {winner} wins in {reaction_time} seconds!")
+    print(f"[SCORE] {player_left}: {scores[player_left]} | {player_right}: {scores[player_right]}")
+
+
+# Register button handlers
+left_button.when_pressed = button_pressed
+right_button.when_pressed = button_pressed
+
+# Main game loop
+try:
+    while current_round < total_rounds:
+        current_round += 1
+        print(f"\n=== Round {current_round} ===")
+
+        # Reset game state
+        game_active = True
+        led.off()  # Ensure LED starts off
+
+        # Random LED phase
+        led.on()
+        delay = uniform(5, 10)
+        sleep(delay)
+        led.off()
+
+        # Start reaction timer
+        start_time = time()
+
+        # Response window (3 seconds)
+        timeout = 3
+        while (time() - start_time < timeout) and game_active:
+            sleep(0.05)
+
+        # Handle timeout
+        if game_active:
+            print("[TIMEOUT] No response this round!")
+            game_active = False
+
+finally:
+    # Ensure LED turns off on exit
     led.off()
+
+# Final results
+print("\n=== Game Over ===")
+print(f"[FINAL SCORE] {player_left}: {scores[player_left]} | {player_right}: {scores[player_right]}")
+if reaction_times:
+    avg_time = round(sum(reaction_times) / len(reaction_times), 3)
+    print(f"[STATS] Average reaction time: {avg_time} seconds")
+else:
+    print("[STATS] No valid reaction times recorded")
+
+if scores[player_left] == scores[player_right]:
+    print("[TIE] Game ends in draw!")
+else:
+    winner = max(scores, key=scores.get)
+    print(f"[CHAMPION] {winner} wins!")
+
+# Cleanup
+led.close()
+left_button.close()
+right_button.close()
