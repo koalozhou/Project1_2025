@@ -1,6 +1,6 @@
 # Author: Renjie Zhou
-# Date: 2025-04-09
-# Button control the LED
+# Date: 2025-04-12
+# Button control the LED and get player names
 
 from gpiozero import LED, Button
 from time import sleep
@@ -10,12 +10,20 @@ led = LED(4)
 right_button = Button(15)
 left_button = Button(14)
 
+left_name = input('Left player name is ')
+right_name = input('Right player name is ')
+
 led.on()
-sleep(uniform(5,10))
+sleep(uniform(5, 10))
 led.off()
 
 def pressed(button):
-    print(str(button.pin.number) +  'won the game')
+    if button.pin.number == 14:
+        print(left_name + ' won the game')
+    else:
+        print(right_name + ' won the game')
+    exit() 
+
 
 right_button.when_pressed = pressed
 left_button.when_pressed = pressed
