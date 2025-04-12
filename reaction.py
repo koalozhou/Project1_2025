@@ -1,4 +1,4 @@
-# Author: Yang Yue
+# Author: Yang Yue & Zhou Renjie
 # Date: 2025-04-12
 # Quick Reaction Game with Reaction Timer
 
