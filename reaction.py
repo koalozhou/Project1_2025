@@ -1,29 +1,42 @@
 # Author: Renjie Zhou
 # Date: 2025-04-12
-# Button control the LED and get player names
+# Loop game
 
 from gpiozero import LED, Button
 from time import sleep
 from random import uniform
 
 led = LED(4)
-right_button = Button(15)
-left_button = Button(14)
+# 确保左按钮接GPIO14，右按钮接GPIO15（关键修正点）
+left_button = Button(14)  
+right_button = Button(15)  
 
-left_name = input('Left player name is ')
-right_name = input('Right player name is ')
-
-led.on()
-sleep(uniform(5, 10))
-led.off()
+left_name = input('Left player name: ')
+right_name = input('Right player name: ')
 
 def pressed(button):
-    if button.pin.number == 14:
-        print(left_name + ' won the game')
-    else:
-        print(right_name + ' won the game')
-    exit() 
+    # 调试：打印触发的引脚编号
+    print(f"Button pressed on pin: {button.pin.number}")  
+    if button.pin.number == 14:  # 左按钮触发
+        print(f"{left_name} won the game!")
+    else:  # 右按钮触发（引脚15）
+        print(f"{right_name} won the game!")
+    # 移除事件监听，避免重复触发
+    left_button.when_pressed = None  
+    right_button.when_pressed = None  
 
+max_rounds = int(input("How many rounds do you want to play? "))
+current_round = 0
 
-right_button.when_pressed = pressed
-left_button.when_pressed = pressed
+while current_round < max_rounds:
+    current_round += 1
+    print(f"\nRound {current_round} begins!")
+    
+    # 重置事件监听
+    left_button.when_pressed = pressed  
+    right_button.when_pressed = pressed  
+    
+    led.on()
+    delay = uniform(5, 10)  # 随机亮灯时间（5-10秒）
+    sleep(delay)
+    led.off()
